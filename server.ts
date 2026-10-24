@@ -43,9 +43,10 @@ function saveDurationCache() {
 // Durée exacte via ffprobe (une vidéo à la fois, en arrière-plan)
 function probe(file: string): Promise<{ duration: number; resolution: string } | null> {
   return new Promise((resolve) => {
+    // nice : priorité minimale, pour ne jamais ralentir la diffusion
     execFile(
-      'ffprobe',
-      ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height:format=duration', '-of', 'json', file],
+      'nice',
+      ['-n', '19', 'ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=height:format=duration', '-of', 'json', file],
       { timeout: 20000 },
       (err, stdout) => {
         if (err) return resolve(null);
@@ -72,6 +73,8 @@ async function probeMissingDurations(paths: string[]) {
     for (const p of paths) {
       if (durationCache[p]?.duration > 0) continue;
       const r = await probe(p);
+      // Pause entre deux fichiers : ne pas saturer le NAS pendant la diffusion
+      await new Promise((ok) => setTimeout(ok, 1500));
       if (r) {
         durationCache[p] = r;
         if (++count % 20 === 0) saveDurationCache();
@@ -356,7 +359,10 @@ async function getDiagnostics() {
   // (il repart en « playlist + sortie active » s'il a redémarré)
   let outputOn = false;
   if (telnetConnected) {
-    outputOn = /\bon\b/i.test(await sendTelnetCommand('output_url.status'));
+    const st = (await sendTelnetCommand('output_url.status')).trim().toLowerCase();
+    outputOn = /^(on|true|started|1)\b/.test(st);
+    // Réponse inattendue : on ne touche à rien plutôt que de couper/relancer en boucle
+    if (!/^(on|off|true|false|started|stopped|0|1)\b/.test(st)) outputOn = engine.mode !== 'off';
     const wantOn = engine.mode !== 'off';
     if (outputOn !== wantOn) {
       await sendTelnetCommand(wantOn ? 'output_url.start' : 'output_url.stop');
