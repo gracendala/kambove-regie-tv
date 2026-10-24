@@ -136,10 +136,16 @@ function setAntenne(on: boolean) {
 }
 
 async function getLiquidsoapCurrentTrack(): Promise<string | null> {
-  const meta = await sendTelnetCommand('output_url.metadata');
-  // La dernière piste est en fin de liste : on prend la dernière occurrence
-  const matches = [...meta.matchAll(/(?:filename|initial_uri)="([^"]+)"/g)];
-  return matches.length ? matches[matches.length - 1][1] : null;
+  // Les vidéos n'ont pas de tags : output_url.metadata est vide.
+  // On demande le numéro du fichier à l'antenne, puis son chemin.
+  const onAir = await sendTelnetCommand('request.on_air');
+  const rids = onAir.split(/\s+/).filter((x) => /^\d+$/.test(x)).reverse();
+  for (const rid of rids) {
+    const meta = await sendTelnetCommand(`request.metadata ${rid}`);
+    const m = meta.match(/(?:^|\n)filename="([^"]+)"/) || meta.match(/initial_uri="([^"]+)"/);
+    if (m) return m[1];
+  }
+  return null;
 }
 
 async function getLiquidsoapRemaining(): Promise<number | null> {
