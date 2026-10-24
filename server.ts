@@ -127,7 +127,7 @@ function sendTelnetCommand(command: string): Promise<string> {
   return run;
 }
 
-function setSource(n: 0 | 1 | 2) {
+function setSource(n: 0 | 1) {
   return sendTelnetCommand(`var.set regie_source = ${n}`);
 }
 
@@ -264,14 +264,14 @@ function loadInitialPlaylist() {
 }
 
 // ─── État de la régie ────────────────────────────────────────────────────────
-type Mode = 'playlist' | 'obs' | 'standby' | 'emergency_mire' | 'off';
+type Mode = 'playlist' | 'standby' | 'emergency_mire' | 'off';
 
 // Le mode est mémorisé sur disque : après un redémarrage, la régie
 // remet Liquidsoap dans le même état (antenne coupée reste coupée)
 function loadSavedMode(): Mode {
   try {
     const m = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).mode;
-    if (['playlist', 'obs', 'standby', 'emergency_mire', 'off'].includes(m)) return m;
+    if (['playlist', 'standby', 'emergency_mire', 'off'].includes(m)) return m;
   } catch {}
   return 'playlist';
 }
@@ -285,7 +285,7 @@ function setMode(m: Mode) {
   } catch {}
 }
 
-const SOURCE_FOR_MODE: Record<Mode, 0 | 1 | 2> = { playlist: 1, obs: 2, standby: 0, emergency_mire: 0, off: 0 };
+const SOURCE_FOR_MODE: Record<Mode, 0 | 1> = { playlist: 1, standby: 0, emergency_mire: 0, off: 0 };
 
 const engine = {
   playlist: loadInitialPlaylist() as any[],
@@ -297,7 +297,6 @@ const engine = {
 
 function statusLabel() {
   if (engine.mode === 'off') return 'OFFLINE';
-  if (engine.mode === 'obs') return 'OBS_LIVE';
   if (engine.mode === 'playlist') return 'ONLINE';
   return 'STANDBY';
 }
@@ -531,7 +530,7 @@ async function startServer() {
       ...diag,
       status: diag.serverStatus.telnetConnected ? statusLabel() : 'OFFLINE',
       mode: engine.mode,
-      onAir: diag.serverStatus.telnetConnected && diag.outputOn && (engine.mode === 'playlist' || engine.mode === 'obs'),
+      onAir: diag.serverStatus.telnetConnected && diag.outputOn && engine.mode === 'playlist',
       currentMedia: current && engine.mode === 'playlist' ? {
         title: current.title || 'Média en cours',
         path: current.path || '',
@@ -571,10 +570,6 @@ async function startServer() {
     } else if (action === 'emergency_mire') {
       setMode('emergency_mire');
       await setSource(0);
-    } else if (action === 'obs_mode' || action === 'obs') {
-      setMode('obs');
-      await setSource(2);
-      await setAntenne(true);
     } else if (action === 'skip' || action === 'next') {
       // Si une vidéo « Lire maintenant » passe, on la saute ; sinon la playlist avance
       const isDirect = engine.currentPath && !engine.playlist.some((it) => it.path === engine.currentPath);
@@ -584,7 +579,7 @@ async function startServer() {
     } else {
       return res.status(400).json({ success: false, error: `Action inconnue : ${action}` });
     }
-    res.json({ success: true, action, status: statusLabel(), onAir: engine.mode === 'playlist' || engine.mode === 'obs', mode: engine.mode });
+    res.json({ success: true, action, status: statusLabel(), onAir: engine.mode === 'playlist', mode: engine.mode });
   });
 
   // Lecture immédiate d'une vidéo du NAS, sans toucher à la playlist

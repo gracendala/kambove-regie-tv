@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Tv,
-  Radio,
   HardDrive,
   CheckCircle2,
   AlertTriangle,
@@ -157,22 +156,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <FastForward className="w-3.5 h-3.5" />
               <span>Média Suivant</span>
-            </button>
-
-            {/* Direct OBS */}
-            <button
-              id="btn-ctrl-obs"
-              onClick={() => onControl('obs_mode')}
-              disabled={isActionLoading}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                status.mode === 'obs'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-2 ring-purple-400'
-                  : 'bg-slate-800 hover:bg-purple-950/70 text-purple-300 border border-purple-800/60'
-              }`}
-              title="Basculer la diffusion sur le flux direct OBS (Culte)"
-            >
-              <Radio className="w-3.5 h-3.5" />
-              <span>Direct OBS</span>
             </button>
 
             {/* Mire Urgence */}

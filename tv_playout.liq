@@ -9,8 +9,8 @@ settings.frame.video.width.set(1280)
 settings.frame.video.height.set(720)
 settings.frame.video.framerate.set(25)
 
-# Variable interactive de sélection de source (0 = Standby / Attente, 1 = Playlist NAS, 2 = Direct OBS)
-# Changement via telnet : var.set regie_source = 2
+# Variable interactive de sélection de source (0 = Standby / Attente, 1 = Playlist NAS)
+# Changement via telnet : var.set regie_source = 0
 active_source = interactive.int("regie_source", 1)
 
 # 1. Écran d attente / Standby
@@ -29,13 +29,9 @@ direct = request.queue(id="direct")
 
 playlist_stream = fallback(id="programme", track_sensitive=false, [direct, tv_playlist, attente])
 
-# 3. Flux Direct OBS (écoute RTMP sur le port 1936)
-obs_live = input.rtmp(listen=true, "rtmp://0.0.0.0:1936/live/obs")
-obs_stream = fallback(track_sensitive=false, [obs_live, attente])
 
 # Commutateur maître selon le bouton cliqué sur la console
 master_stream = switch(track_sensitive=false, [
-  ({ active_source() == 2 }, obs_stream),
   ({ active_source() == 1 }, playlist_stream),
   ({ true }, attente)
 ])

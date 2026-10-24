@@ -195,11 +195,6 @@ export default function App() {
 
   // Quick insert
   const handleQuickInsert = (type: 'jingle' | 'mire' | 'obs') => {
-    if (type === 'obs') {
-      handleControl('obs_mode');
-      return;
-    }
-
     if (type === 'mire') {
       handleControl('emergency_mire');
       return;
