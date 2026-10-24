@@ -126,15 +126,15 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
       {/* Header with NAS Storage Vitals */}
-      <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+      <div className="p-3 sm:p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-indigo-950 border border-indigo-700/60 flex items-center justify-center text-indigo-400">
+          <div className="hidden sm:flex w-10 h-10 rounded-lg bg-indigo-950 border border-indigo-700/60 items-center justify-center text-indigo-400">
             <HardDrive className="w-5 h-5" />
           </div>
         <div>
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
             Explorateur NAS Vidéos
-            <span className={`text-[10px] font-mono font-normal px-2 py-0.5 rounded border ${
+            <span className={`hidden sm:inline text-[10px] font-mono font-normal px-2 py-0.5 rounded border ${
               nasStatus?.mounted
                 ? 'bg-emerald-950/80 text-emerald-400 border-emerald-700/60'
                 : 'bg-amber-950/80 text-amber-400 border-amber-700/60'
@@ -151,7 +151,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
       </div>
 
       {/* Storage Bar */}
-      <div className="flex items-center gap-4 bg-slate-900 px-3.5 py-2 rounded-lg border border-slate-800 text-xs">
+      <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-4 bg-slate-900 px-3.5 py-2 rounded-lg border border-slate-800 text-xs">
         <div className="flex flex-col">
           <span className="text-[10px] text-slate-400 uppercase font-mono">Stockage NAS</span>
           <span className="font-mono font-bold text-slate-200">
@@ -175,7 +175,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
         <button
           onClick={onRefreshNas}
           disabled={isRefreshing}
-          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="p-2 sm:p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition"
           title="Rafraîchir les fichiers du NAS"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -184,10 +184,10 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
       </div>
 
       {/* Main layout: Category Sidebar + Media Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 min-h-[480px]">
+      <div className="grid grid-cols-1 md:grid-cols-12 md:min-h-[480px]">
         {/* Left Category Nav (3 cols) */}
-        <div className="md:col-span-3 bg-slate-950/50 border-r border-slate-800 p-3 space-y-1">
-          <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+        <div className="md:col-span-3 bg-slate-950/50 border-b md:border-b-0 md:border-r border-slate-800 p-2 md:p-3 flex md:block gap-2 md:space-y-1 overflow-x-auto">
+          <div className="hidden md:block px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
             Dossiers du NAS
           </div>
 
@@ -195,7 +195,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition text-left ${
+              className={`shrink-0 md:w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-medium transition text-left whitespace-nowrap ${
                 selectedCategory === cat.id
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
@@ -218,7 +218,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
           ))}
 
           {/* Tips for Grace */}
-          <div className="mt-6 p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 space-y-2">
+          <div className="hidden md:block mt-6 p-3 rounded-lg bg-slate-900 border border-slate-800 text-[11px] text-slate-400 space-y-2">
             <div className="font-semibold text-slate-300 flex items-center gap-1.5">
               <Info className="w-3.5 h-3.5 text-indigo-400" />
               Organisation des médias :
@@ -230,25 +230,25 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
         </div>
 
         {/* Right Media Content (9 cols) */}
-        <div className="md:col-span-9 p-4 flex flex-col justify-between">
+        <div className="md:col-span-9 p-3 sm:p-4 flex flex-col justify-between">
           <div>
             {/* Search and Action Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-800">
-              <div className="relative flex-1 min-w-[220px]">
+              <div className="relative flex-1 min-w-full sm:min-w-[220px]">
                 <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Rechercher par titre, fichier ou chemin..."
+                  placeholder="Rechercher une vidéo..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                  className="w-full pl-9 pr-3 py-2.5 sm:py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-base sm:text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleSelectAllVisible}
-                  className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
+                  className="px-2.5 py-2 sm:py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
                 >
                   {selectedIds.size === filteredMedia.length && filteredMedia.length > 0
                     ? 'Tout désélectionner'
@@ -258,9 +258,9 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
                 {selectedIds.size > 0 && (
                   <button
                     onClick={handleAddSelected}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow transition"
+                    className="fixed md:static bottom-20 inset-x-4 z-40 justify-center flex items-center gap-1.5 px-3 py-3 md:py-1.5 rounded-xl md:rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm md:text-xs font-bold shadow-lg shadow-black/50 md:shadow transition"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4 md:w-3.5 md:h-3.5" />
                     <span>Ajouter ({selectedIds.size}) à la grille</span>
                   </button>
                 )}
@@ -268,7 +268,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
             </div>
 
             {/* Media Items Table / List */}
-            <div className="space-y-2 max-h-[460px] overflow-y-auto pr-1">
+            <div className="space-y-2 md:max-h-[460px] md:overflow-y-auto md:pr-1">
               {filteredMedia.length === 0 ? (
                 <div className="py-16 text-center text-slate-500 text-xs flex flex-col items-center justify-center gap-2">
                   <Film className="w-10 h-10 text-slate-600 mb-1" />
@@ -310,12 +310,12 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleSelect(item.id)}
-                          className="mt-1 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
+                          className="mt-1 w-5 h-5 sm:w-auto sm:h-auto shrink-0 rounded border-slate-700 bg-slate-900 text-indigo-600 focus:ring-0 cursor-pointer"
                         />
 
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-xs text-slate-100">
+                            <span className="font-semibold text-sm sm:text-xs text-slate-100 line-clamp-2">
                               {item.title}
                             </span>
                             <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700 uppercase">
@@ -323,7 +323,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
                             </span>
                           </div>
 
-                          <p className="text-[11px] font-mono text-slate-400 truncate max-w-lg mt-0.5">
+                          <p className="hidden sm:block text-[11px] font-mono text-slate-400 truncate max-w-lg mt-0.5">
                             {item.path}
                           </p>
 
@@ -331,8 +331,8 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
                             <span>Durée : <b className="text-slate-300">{item.durationFormatted}</b></span>
                             <span>&bull;</span>
                             <span>Taille : {item.sizeFormatted}</span>
-                            <span>&bull;</span>
-                            <span>Format : {item.format}</span>
+                            <span className="hidden sm:inline">&bull;</span>
+                            <span className="hidden sm:inline">Format : {item.format}</span>
                           </div>
                         </div>
                       </div>
@@ -340,8 +340,21 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
                       {/* Right Action buttons */}
                       <div className="flex items-center gap-2 self-end sm:self-center">
                         <button
+                          onClick={() => {
+                            if (window.confirm(`Diffuser « ${item.title} » maintenant ? Le clip en cours sera interrompu.`)) {
+                              onPlayDirectly(item);
+                            }
+                          }}
+                          className="flex items-center gap-1 px-3 py-2 sm:px-2.5 sm:py-1.5 rounded bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 text-xs font-semibold transition"
+                          title="Diffuser cette vidéo immédiatement"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Lire</span>
+                        </button>
+
+                        <button
                           onClick={() => setInspectItem(item)}
-                          className="p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
+                          className="p-2 sm:p-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 transition"
                           title="Inspecter les métadonnées FFprobe"
                         >
                           <Info className="w-3.5 h-3.5" />
@@ -349,7 +362,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
 
                         <button
                           onClick={() => onAddToPlaylist([item])}
-                          className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 text-xs font-semibold transition"
+                          className="flex items-center gap-1 px-3 py-2 sm:px-2.5 sm:py-1.5 rounded bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 text-xs font-semibold transition"
                           title="Ajouter ce média à la fin de la programmation"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -364,17 +377,17 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
           </div>
 
           {/* Bottom quick stats */}
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="hidden md:flex mt-4 pt-3 border-t border-slate-800 items-center justify-between text-xs text-slate-400">
             <span>Affichage de {filteredMedia.length} fichiers vidéo</span>
-            <span className="font-mono text-slate-500">Scan automatique Liquidsoap actif</span>
+            <span className="font-mono text-slate-500">Rescan automatique toutes les 5 min</span>
           </div>
         </div>
       </div>
 
       {/* FFprobe Metadata Modal */}
       {inspectItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-lg w-full p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] bg-black/70 flex items-end sm:items-center justify-center sm:p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-xl max-w-lg w-full p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
               <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                 <FileVideo className="w-4 h-4 text-indigo-400" />
@@ -397,7 +410,7 @@ export const NasExplorer: React.FC<NasExplorerProps> = ({
               <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono space-y-1.5 text-slate-300">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Chemin physique NAS :</span>
-                  <span className="text-indigo-300 truncate max-w-xs">{inspectItem.path}</span>
+                  <span className="text-indigo-300 break-all text-right ml-3">{inspectItem.path}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Durée exacte :</span>

@@ -29,13 +29,14 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
   const [isExecuting, setIsExecuting] = useState<boolean>(false);
   const [lastOutput, setLastOutput] = useState<string | null>(null);
 
+  // Commandes vérifiées sur Liquidsoap 2.2 (serveur Kambove)
   const quickCommands = [
-    { label: 'tv_playlist.remaining', desc: 'Secondes restantes du média actif' },
-    { label: 'tv_playlist.url', desc: 'Chemin complet du fichier en cours' },
-    { label: 'tv_playlist.skip', desc: 'Forcer la coupure vers le suivant' },
+    { label: 'output_url.remaining', desc: 'Secondes restantes du clip à l\'antenne' },
+    { label: 'request.on_air', desc: 'Numéro du clip à l\'antenne' },
+    { label: 'var.get antenne', desc: 'Antenne active (true) ou coupée (false)' },
     { label: 'tv_playlist.reload', desc: 'Recharger active_playlist.txt' },
-    { label: 'server.version', desc: 'Version de Liquidsoap installée' },
-    { label: 'help', desc: 'Liste des commandes Telnet disponibles' }
+    { label: 'version', desc: 'Version de Liquidsoap installée' },
+    { label: 'help', desc: 'Liste des commandes disponibles' }
   ];
 
   const handleExecute = async (cmdToRun?: string) => {
@@ -57,9 +58,9 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
   return (
     <div className="space-y-4">
       {/* Vitals Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Liquidsoap Playout Daemon */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Daemon Liquidsoap
@@ -79,7 +80,7 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
         </div>
 
         {/* Telnet Socket Status */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Socket Telnet IPC
@@ -98,7 +99,7 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
         </div>
 
         {/* RTMP Playout Stream */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Sortie RTMP (Owncast)
@@ -117,7 +118,7 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
         </div>
 
         {/* NAS NFS / CIFS Mount */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow">
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
               Stockage NAS Mount
@@ -137,7 +138,7 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
       </div>
 
       {/* Interactive Telnet Console */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow flex flex-col justify-between">
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-4 shadow flex flex-col justify-between">
         <div>
           <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
             <div className="flex items-center gap-2">
@@ -179,13 +180,13 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Entrez une commande Telnet (ex: tv_playlist.remaining, tv_playlist.skip)..."
+              placeholder="Commande telnet (ex : request.on_air)"
               value={customCommand}
               onChange={(e) => setCustomCommand(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleExecute();
               }}
-              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2.5 sm:py-2 text-base sm:text-xs font-mono text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
             />
             <button
               onClick={() => handleExecute()}
@@ -193,7 +194,7 @@ export const SystemDiagnostics: React.FC<SystemDiagnosticsProps> = ({
               className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>Envoyer</span>
+              <span className="hidden sm:inline">Envoyer</span>
             </button>
           </div>
 

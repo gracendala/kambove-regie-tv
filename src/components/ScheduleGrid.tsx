@@ -39,7 +39,10 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   // Fait défiler la grille jusqu'au clip en cours quand il change
   useEffect(() => {
     if (currentIndex < 0) return;
-    document.getElementById(`grille-ligne-${currentIndex}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const visible = window.matchMedia('(min-width: 768px)').matches ? 'grille-ligne' : 'grille-carte';
+    // Sur téléphone, on ne fait pas défiler toute la page à chaque changement de clip
+    if (visible === 'grille-carte') return;
+    document.getElementById(`${visible}-${currentIndex}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [currentIndex]);
 
 
@@ -132,30 +135,31 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
       {/* Table Header Bar */}
-      <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3 sm:p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex items-center gap-2">
-              <span>Grille de Programmation Quotidienne</span>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-100 flex flex-wrap items-center gap-2">
+              <span><span className="sm:hidden">Grille</span><span className="hidden sm:inline">Grille de Programmation Quotidienne</span></span>
               <span className="text-xs font-mono font-normal px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
                 {playlist.length} éléments &bull; Durée totale : {totalFormatted}
               </span>
             </h3>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="hidden sm:block text-xs text-slate-400 mt-0.5">
             Synchronisé avec <code className="text-indigo-400 font-mono">/home/grace/regie-tv/playlists/active_playlist.txt</code>
           </p>
         </div>
 
         {/* Toolbar Controls */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <label
             id="btn-import-playlist-file"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer"
             title="Importer une playlist sauvegardée (.txt ou .json)"
           >
             <Upload className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Importer Playlist</span>
+            <span className="hidden sm:inline">Importer Playlist</span>
+            <span className="sm:hidden">Importer</span>
             <input
               type="file"
               accept=".txt,.json"
@@ -201,17 +205,18 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
           <button
             id="btn-add-nas-media"
             onClick={onOpenNasExplorer}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition"
+            className="flex items-center gap-1.5 px-3 py-2 sm:py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Ajouter Médias (NAS)</span>
+            <span className="hidden sm:inline">Ajouter Médias (NAS)</span>
+            <span className="sm:hidden">Ajouter</span>
           </button>
 
           <button
             id="btn-save-playlist"
             onClick={onSavePlaylist}
             disabled={isSaving}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition"
+            className="order-first sm:order-none w-full sm:w-auto justify-center flex items-center gap-1.5 px-3.5 py-2.5 sm:py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20 transition"
           >
             <Save className="w-3.5 h-3.5" />
             <span>{isSaving ? 'Enregistrement...' : 'Enregistrer la Grille TV'}</span>
@@ -220,7 +225,7 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
           <button
             id="btn-export-txt"
             onClick={handleExportTxt}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
+            className="ml-auto sm:ml-0 p-2 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition"
             title="Télécharger le fichier active_playlist.txt"
           >
             <FileDown className="w-4 h-4" />
@@ -229,7 +234,7 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
           <button
             id="btn-clear-grid"
             onClick={handleClear}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-400 border border-slate-700 transition"
+            className="p-2 sm:p-1.5 rounded-lg bg-slate-800 hover:bg-red-950 text-slate-400 hover:text-red-400 border border-slate-700 transition"
             title="Vider la grille"
           >
             <Trash2 className="w-4 h-4" />
@@ -244,12 +249,74 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             <span>{saveMessage}</span>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400/80">Liquidsoap reloaded</span>
+          <span className="hidden sm:inline text-[10px] font-mono text-emerald-400/80">Liquidsoap rechargé</span>
         </div>
       )}
 
-      {/* Schedule Table */}
-      <div className="overflow-x-auto max-h-[500px]">
+      {/* Liste en cartes (téléphone) */}
+      <div className="md:hidden divide-y divide-slate-800/60">
+        {playlist.length === 0 ? (
+          <div className="py-10 px-4 text-center text-slate-500 text-sm">
+            La grille est vide. Touchez <b>Ajouter</b> pour choisir des vidéos du NAS.
+          </div>
+        ) : (
+          playlist.map((item, index) => {
+            const isPlaying = index === currentIndex;
+            return (
+              <div
+                key={item.id}
+                id={`grille-carte-${index}`}
+                className={`flex items-center gap-3 px-3 py-3 ${isPlaying ? 'bg-rose-950/30 border-l-4 border-l-rose-500' : ''}`}
+              >
+                <div className="w-7 shrink-0 text-center font-mono">
+                  {isPlaying ? (
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-rose-600 text-white text-[10px] font-bold animate-pulse">ON</span>
+                  ) : (
+                    <span className="text-slate-500 text-xs">{index + 1}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className={`text-sm font-semibold leading-snug line-clamp-2 ${isPlaying ? 'text-rose-200' : 'text-slate-200'}`}>
+                    {item.title}
+                  </div>
+                  <div className="text-[11px] font-mono text-slate-500 mt-0.5">
+                    {item.durationFormatted}
+                    {item.category ? <span className="uppercase"> &bull; {item.category}</span> : null}
+                  </div>
+                </div>
+                <div className="flex items-center shrink-0">
+                  <button
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0}
+                    className="p-2.5 rounded-lg text-slate-400 active:bg-slate-700 disabled:opacity-25"
+                    aria-label="Monter"
+                  >
+                    <MoveUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === playlist.length - 1}
+                    className="p-2.5 rounded-lg text-slate-400 active:bg-slate-700 disabled:opacity-25"
+                    aria-label="Descendre"
+                  >
+                    <MoveDown className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(index)}
+                    className="p-2.5 rounded-lg text-slate-400 active:bg-red-900/50 active:text-red-400"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Schedule Table (ordinateur) */}
+      <div className="hidden md:block overflow-x-auto max-h-[500px]">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-950/80 border-b border-slate-800 text-[11px] font-bold text-slate-400 uppercase tracking-wider font-mono">
@@ -400,7 +467,7 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
       </div>
 
       {/* Footer Instructions / Quick Tip */}
-      <div className="px-4 py-2.5 bg-slate-950/60 border-t border-slate-800 text-[11px] text-slate-400 flex flex-wrap items-center justify-between gap-2">
+      <div className="hidden md:flex px-4 py-2.5 bg-slate-950/60 border-t border-slate-800 text-[11px] text-slate-400 flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
           <span>Calcul automatique des enchaînements activé (zéro trou d'antenne).</span>

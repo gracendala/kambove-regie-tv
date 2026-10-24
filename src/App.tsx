@@ -283,7 +283,7 @@ export default function App() {
       />
 
       {/* Main Workspace */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 py-4 sm:p-6 pb-24 md:pb-6 space-y-4 sm:space-y-6">
         {/* Tab 1: Live Master Playout & Schedule Rundown */}
         {activeTab === 'regie' && (
           <div className="space-y-6">
