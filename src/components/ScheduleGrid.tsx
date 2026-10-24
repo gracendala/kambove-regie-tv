@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Play,
   Trash2,
   MoveUp,
@@ -38,6 +38,12 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
   isSaving,
   saveMessage
 }) => {
+  // Fait défiler la grille jusqu'au clip en cours quand il change
+  useEffect(() => {
+    if (currentIndex < 0) return;
+    document.getElementById(`grille-ligne-${currentIndex}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [currentIndex]);
+
   const [showTemplatesModal, setShowTemplatesModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<RundownTemplate | null>(null);
 
@@ -299,6 +305,7 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
                 return (
                   <tr
                     key={item.id}
+                    id={`grille-ligne-${index}`}
                     className={`transition group ${
                       isPlaying
                         ? 'bg-rose-950/20 border-l-4 border-l-rose-500 hover:bg-rose-950/30'

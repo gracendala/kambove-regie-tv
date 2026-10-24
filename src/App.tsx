@@ -51,7 +51,10 @@ export default function App() {
   });
 
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState<number>(0);
+  // Chemin du clip réellement à l'antenne (lu dans Liquidsoap via /api/status)
+  const [onAirPath, setOnAirPath] = useState<string | null>(null);
+  // Ligne de la grille en cours de diffusion (-1 si le clip n'est pas dans la grille)
+  const currentIndex = onAirPath ? playlist.findIndex((it) => it.path === onAirPath) : -1;
   const [nasMedia, setNasMedia] = useState<MediaItem[]>([]);
   const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -65,6 +68,7 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
+        setOnAirPath(data.currentMedia?.path || null);
       }
     } catch (e) {
       // Offline fallback
@@ -84,12 +88,12 @@ export default function App() {
         if (statusRes.ok) {
           const sData = await statusRes.json();
           setStatus(sData);
+          setOnAirPath(sData.currentMedia?.path || null);
         }
         if (playlistRes.ok) {
           const pData = await playlistRes.json();
           if (Array.isArray(pData.playlist)) {
             setPlaylist(pData.playlist);
-            setCurrentIndex(pData.currentIndex || 0);
           }
         }
         if (nasRes.ok) {
@@ -218,7 +222,7 @@ export default function App() {
       };
 
       // Insert right after current item
-      const insertAt = Math.min(currentIndex + 1, playlist.length);
+      const insertAt = Math.min(Math.max(currentIndex, -1) + 1, playlist.length);
       const updated = [...playlist.slice(0, insertAt), jingleItem, ...playlist.slice(insertAt)];
       const cascaded = cascadeRundownTimes(updated);
       setPlaylist(cascaded);
