@@ -8,3 +8,4 @@ coverage/
 !.env.example
 %USERPROFILE%*
 %USERPROFILE%*
+%USERPROFILE%*
