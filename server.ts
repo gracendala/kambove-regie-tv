@@ -18,6 +18,8 @@ const RTMP_OUT_URL = process.env.RTMP_OUT_URL || 'rtmp://127.0.0.1:1935/live';
 const VIDEO_BITRATE_KBPS = 1800; // doit correspondre à tv_playout.liq
 const NAS_RESCAN_MS = 5 * 60 * 1000;
 const STATE_FILE = path.join(ROOT_DIR, 'regie_state.json');
+// Présent = antenne coupée, lu par tv_playout.liq au démarrage
+const ANTENNE_OFF_FLAG = path.join(ROOT_DIR, 'antenne_off');
 
 // Mot de passe facultatif : définir REGIE_PASSWORD dans l'environnement pm2
 const REGIE_USER = process.env.REGIE_USER || 'regie';
@@ -127,6 +129,10 @@ function sendTelnetCommand(command: string): Promise<string> {
 
 function setSource(n: 0 | 1 | 2) {
   return sendTelnetCommand(`var.set regie_source = ${n}`);
+}
+
+function setAntenne(on: boolean) {
+  return sendTelnetCommand(`var.set antenne = ${on}`);
 }
 
 async function getLiquidsoapCurrentTrack(): Promise<string | null> {
@@ -274,6 +280,8 @@ function setMode(m: Mode) {
   engine.mode = m;
   try {
     fs.writeFileSync(STATE_FILE, JSON.stringify({ mode: m }), 'utf8');
+    if (m === 'off') fs.writeFileSync(ANTENNE_OFF_FLAG, '', 'utf8');
+    else fs.rmSync(ANTENNE_OFF_FLAG, { force: true });
   } catch {}
 }
 
@@ -359,13 +367,11 @@ async function getDiagnostics() {
   // (il repart en « playlist + sortie active » s'il a redémarré)
   let outputOn = false;
   if (telnetConnected) {
-    const st = (await sendTelnetCommand('output_url.status')).trim().toLowerCase();
-    outputOn = /^(on|true|started|1)\b/.test(st);
-    // Réponse inattendue : on ne touche à rien plutôt que de couper/relancer en boucle
-    if (!/^(on|off|true|false|started|stopped|0|1)\b/.test(st)) outputOn = engine.mode !== 'off';
+    const st = (await sendTelnetCommand('var.get antenne')).trim().toLowerCase();
+    outputOn = st.startsWith('true');
     const wantOn = engine.mode !== 'off';
-    if (outputOn !== wantOn) {
-      await sendTelnetCommand(wantOn ? 'output_url.start' : 'output_url.stop');
+    if (/^(true|false)/.test(st) && outputOn !== wantOn) {
+      await setAntenne(wantOn);
       outputOn = wantOn;
     }
     const src = parseInt((await sendTelnetCommand('var.get regie_source')).replace(/[^0-9-]/g, ''), 10);
@@ -553,12 +559,12 @@ async function startServer() {
     if (action === 'start' || action === 'onair' || action === 'play') {
       setMode('playlist');
       await setSource(1);
-      await sendTelnetCommand('output_url.start');
+      await setAntenne(true);
     } else if (action === 'off' || action === 'shutdown') {
       // Coupe complètement l'envoi vers Owncast
       setMode('off');
       await setSource(0);
-      await sendTelnetCommand('output_url.stop');
+      await setAntenne(false);
     } else if (action === 'standby' || action === 'stop') {
       setMode('standby');
       await setSource(0);
@@ -568,7 +574,7 @@ async function startServer() {
     } else if (action === 'obs_mode' || action === 'obs') {
       setMode('obs');
       await setSource(2);
-      await sendTelnetCommand('output_url.start');
+      await setAntenne(true);
     } else if (action === 'skip' || action === 'next') {
       // Si une vidéo « Lire maintenant » passe, on la saute ; sinon la playlist avance
       const isDirect = engine.currentPath && !engine.playlist.some((it) => it.path === engine.currentPath);
@@ -589,7 +595,7 @@ async function startServer() {
     }
     setMode('playlist');
     await setSource(1);
-    await sendTelnetCommand('output_url.start');
+    await setAntenne(true);
     const response = await sendTelnetCommand(`direct.push ${p}`);
     res.json({ success: true, response });
   });
@@ -614,6 +620,7 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Kambove TV Régie running on http://0.0.0.0:${PORT} (${IS_DEV ? 'développement' : 'production'})`);
+    setMode(engine.mode); // recrée le fichier antenne_off si besoin
     refreshNas(true);
   });
 }

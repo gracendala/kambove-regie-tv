@@ -40,14 +40,26 @@ master_stream = switch(track_sensitive=false, [
   ({ true }, attente)
 ])
 
+# Interrupteur d'antenne (telnet : var.set antenne = false / true)
+# Coupé : la sortie n'a plus de signal, elle ferme sa connexion RTMP
+# et Owncast est libre pour recevoir un autre flux.
+# Au démarrage, l'antenne reste coupée si la régie a laissé le fichier antenne_off.
+antenne_flag = "/home/grace/regie-tv/antenne_off"
+antenne = interactive.bool("antenne", not file.exists(antenne_flag))
+
+signal_antenne = switch(id="antenne_switch", track_sensitive=false, [
+  ({ antenne() }, mksafe(master_stream))
+])
+
 # Sortie RTMP encodée en H264 720p @ 25fps + AAC 128k vers Owncast
 output.url(
   id="output_url",
+  fallible=true,
   %ffmpeg(
     format="flv",
     %video(codec="libx264", b="1800k", preset="ultrafast", tune="zerolatency", threads=2),
     %audio(codec="aac", b="128k")
   ),
   url="rtmp://127.0.0.1:1935/live/abc123",
-  mksafe(master_stream)
+  signal_antenne
 )
