@@ -179,7 +179,9 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ playlist })
       });
-      if (res.ok) {
+      if (!res.ok) {
+        setSaveMessage("Erreur d'enregistrement sur le serveur.");
+      } else {
         setSaveMessage('Programmation enregistrée avec succès dans active_playlist.txt et rechargée dans Liquidsoap !');
         setTimeout(() => setSaveMessage(null), 5000);
       }
@@ -252,28 +254,23 @@ export default function App() {
     setActiveTab('regie');
   };
 
-  // Direct play from NAS Explorer
-  const handlePlayDirectly = (item: MediaItem) => {
-    const directItem: PlaylistItem = {
-      id: `pl-direct-${Date.now()}`,
-      mediaId: item.id,
-      title: item.title,
-      path: item.path,
-      category: item.category,
-      duration: item.duration,
-      durationFormatted: item.durationFormatted,
-      scheduledTime: '00:00:00',
-      calculatedStartTime: '00:00:00',
-      calculatedEndTime: '00:00:00',
-      type: 'video',
-      isFixedTime: false,
-      status: 'playing'
-    };
-
-    const updated = [directItem, ...playlist];
-    setPlaylist(cascadeRundownTimes(updated));
-    handleControl('start');
-    setActiveTab('regie');
+  // Direct play from NAS Explorer : le serveur pousse la vidéo dans la file
+  // « direct » de Liquidsoap, elle passe tout de suite sans modifier la playlist
+  const handlePlayDirectly = async (item: MediaItem) => {
+    setIsActionLoading(true);
+    try {
+      await fetch('/api/play-now', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: item.path })
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsActionLoading(false);
+      setActiveTab('regie');
+      fetchStatus();
+    }
   };
 
   // Send Telnet Command
@@ -292,7 +289,7 @@ export default function App() {
   const handleRefreshNas = async () => {
     setIsRefreshingNas(true);
     try {
-      const res = await fetch('/api/nas/media');
+      const res = await fetch('/api/nas/media?refresh=1');
       const data = await res.json();
       setNasMedia(Array.isArray(data) ? data : []);
     } catch (e) {

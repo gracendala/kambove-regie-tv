@@ -10,6 +10,7 @@ settings.frame.video.height.set(720)
 settings.frame.video.framerate.set(25)
 
 # Variable interactive de sélection de source (0 = Standby / Attente, 1 = Playlist NAS, 2 = Direct OBS)
+# Changement via telnet : var.set regie_source = 2
 active_source = interactive.int("regie_source", 1)
 
 # 1. Écran d attente / Standby
@@ -22,7 +23,11 @@ tv_playlist = playlist(
   reload_mode="watch",
   "/home/grace/regie-tv/playlists/active_playlist.txt"
 )
-playlist_stream = fallback(track_sensitive=false, [tv_playlist, attente])
+# File de lecture directe : « Lire maintenant » depuis la médiathèque
+# (telnet : direct.push /chemin/video.mp4). Prioritaire sur la playlist.
+direct = request.queue(id="direct")
+
+playlist_stream = fallback(id="programme", track_sensitive=false, [direct, tv_playlist, attente])
 
 # 3. Flux Direct OBS (écoute RTMP sur le port 1936)
 obs_live = input.rtmp(listen=true, "rtmp://0.0.0.0:1936/live/obs")
