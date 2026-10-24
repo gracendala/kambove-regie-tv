@@ -12,7 +12,8 @@ import {
   Cpu,
   Activity,
   Layers,
-  Clock
+  Clock,
+  Power
 } from 'lucide-react';
 import { PlayoutStatus } from '../types';
 
@@ -53,7 +54,7 @@ export const Header: React.FC<HeaderProps> = ({
       case 'OBS_LIVE':
         return 'DIRECT OBS (CULTE)';
       default:
-        return 'HORS LIGNE';
+        return status.mode === 'off' ? 'ANTENNE COUPÉE' : 'HORS LIGNE';
     }
   };
 
@@ -124,6 +125,26 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Square className="w-3 h-3 fill-current" />
               <span>Standby</span>
+            </button>
+
+            {/* Couper l'antenne : plus rien n'est envoyé à Owncast */}
+            <button
+              id="btn-ctrl-off"
+              onClick={() => {
+                if (window.confirm("Couper complètement l'antenne ? Plus rien ne sera envoyé à Owncast.")) {
+                  onControl('off');
+                }
+              }}
+              disabled={isActionLoading || status.mode === 'off'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+                status.mode === 'off'
+                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                  : 'bg-red-700 hover:bg-red-600 text-white shadow-red-900/30'
+              }`}
+              title="Arrêter complètement la diffusion vers Owncast"
+            >
+              <Power className="w-3.5 h-3.5" />
+              <span>Couper l'antenne</span>
             </button>
 
             {/* Suivant / Skip */}

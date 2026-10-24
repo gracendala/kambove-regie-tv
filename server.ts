@@ -17,6 +17,7 @@ const TELNET_PORT = 1234;
 const RTMP_OUT_URL = process.env.RTMP_OUT_URL || 'rtmp://127.0.0.1:1935/live';
 const VIDEO_BITRATE_KBPS = 1800; // doit correspondre à tv_playout.liq
 const NAS_RESCAN_MS = 5 * 60 * 1000;
+const STATE_FILE = path.join(ROOT_DIR, 'regie_state.json');
 
 // Mot de passe facultatif : définir REGIE_PASSWORD dans l'environnement pm2
 const REGIE_USER = process.env.REGIE_USER || 'regie';
@@ -254,17 +255,37 @@ function loadInitialPlaylist() {
 }
 
 // ─── État de la régie ────────────────────────────────────────────────────────
-type Mode = 'playlist' | 'obs' | 'standby' | 'emergency_mire';
+type Mode = 'playlist' | 'obs' | 'standby' | 'emergency_mire' | 'off';
+
+// Le mode est mémorisé sur disque : après un redémarrage, la régie
+// remet Liquidsoap dans le même état (antenne coupée reste coupée)
+function loadSavedMode(): Mode {
+  try {
+    const m = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8')).mode;
+    if (['playlist', 'obs', 'standby', 'emergency_mire', 'off'].includes(m)) return m;
+  } catch {}
+  return 'playlist';
+}
+
+function setMode(m: Mode) {
+  engine.mode = m;
+  try {
+    fs.writeFileSync(STATE_FILE, JSON.stringify({ mode: m }), 'utf8');
+  } catch {}
+}
+
+const SOURCE_FOR_MODE: Record<Mode, 0 | 1 | 2> = { playlist: 1, obs: 2, standby: 0, emergency_mire: 0, off: 0 };
 
 const engine = {
   playlist: loadInitialPlaylist() as any[],
   currentIndex: 0,
-  mode: 'playlist' as Mode,
+  mode: loadSavedMode(),
   currentPath: '' as string,
   trackStartTime: Date.now()
 };
 
 function statusLabel() {
+  if (engine.mode === 'off') return 'OFFLINE';
   if (engine.mode === 'obs') return 'OBS_LIVE';
   if (engine.mode === 'playlist') return 'ONLINE';
   return 'STANDBY';
@@ -330,11 +351,27 @@ async function getDiagnostics() {
   const version = await sendTelnetCommand('version');
   const telnetConnected = version.includes('Liquidsoap');
   const pid = liquidsoapPid();
+
+  // Vérifie que Liquidsoap est bien dans l'état voulu par la régie
+  // (il repart en « playlist + sortie active » s'il a redémarré)
+  let outputOn = false;
+  if (telnetConnected) {
+    outputOn = /\bon\b/i.test(await sendTelnetCommand('output_url.status'));
+    const wantOn = engine.mode !== 'off';
+    if (outputOn !== wantOn) {
+      await sendTelnetCommand(wantOn ? 'output_url.start' : 'output_url.stop');
+      outputOn = wantOn;
+    }
+    const src = parseInt((await sendTelnetCommand('var.get regie_source')).replace(/[^0-9-]/g, ''), 10);
+    const wantSrc = SOURCE_FOR_MODE[engine.mode];
+    if (src !== wantSrc) await setSource(wantSrc);
+  }
   return {
+    outputOn,
     rtmpStatus: {
-      connected: telnetConnected,
+      connected: telnetConnected && outputOn,
       url: RTMP_OUT_URL,
-      bitrateKbps: telnetConnected ? VIDEO_BITRATE_KBPS : 0,
+      bitrateKbps: telnetConnected && outputOn ? VIDEO_BITRATE_KBPS : 0,
       fps: 25,
       droppedFrames: 0,
       uptimeSeconds: Math.floor(process.uptime())
@@ -389,6 +426,14 @@ async function startServer() {
   });
 
   app.get('/api/playlist', (_req, res) => {
+    // Remplace les durées par défaut par les durées réelles dès qu'elles sont connues
+    for (const it of engine.playlist) {
+      const d = durationCache[it.path]?.duration;
+      if (d > 0 && it.duration !== d) {
+        it.duration = d;
+        it.durationFormatted = fmt(d);
+      }
+    }
     res.json({ playlist: engine.playlist, currentIndex: engine.currentIndex });
   });
 
@@ -474,7 +519,7 @@ async function startServer() {
       ...diag,
       status: diag.serverStatus.telnetConnected ? statusLabel() : 'OFFLINE',
       mode: engine.mode,
-      onAir: diag.serverStatus.telnetConnected && engine.mode !== 'standby' && engine.mode !== 'emergency_mire',
+      onAir: diag.serverStatus.telnetConnected && diag.outputOn && (engine.mode === 'playlist' || engine.mode === 'obs'),
       currentMedia: current && engine.mode === 'playlist' ? {
         title: current.title || 'Média en cours',
         path: current.path || '',
@@ -500,17 +545,24 @@ async function startServer() {
   app.post('/api/control', async (req, res) => {
     const { action } = req.body;
     if (action === 'start' || action === 'onair' || action === 'play') {
-      engine.mode = 'playlist';
+      setMode('playlist');
       await setSource(1);
+      await sendTelnetCommand('output_url.start');
+    } else if (action === 'off' || action === 'shutdown') {
+      // Coupe complètement l'envoi vers Owncast
+      setMode('off');
+      await setSource(0);
+      await sendTelnetCommand('output_url.stop');
     } else if (action === 'standby' || action === 'stop') {
-      engine.mode = 'standby';
+      setMode('standby');
       await setSource(0);
     } else if (action === 'emergency_mire') {
-      engine.mode = 'emergency_mire';
+      setMode('emergency_mire');
       await setSource(0);
     } else if (action === 'obs_mode' || action === 'obs') {
-      engine.mode = 'obs';
+      setMode('obs');
       await setSource(2);
+      await sendTelnetCommand('output_url.start');
     } else if (action === 'skip' || action === 'next') {
       // Si une vidéo « Lire maintenant » passe, on la saute ; sinon la playlist avance
       const isDirect = engine.currentPath && !engine.playlist.some((it) => it.path === engine.currentPath);
@@ -529,8 +581,9 @@ async function startServer() {
     if (!p || !isInsideNas(p) || !fs.existsSync(p)) {
       return res.status(400).json({ success: false, error: 'Fichier introuvable sur le NAS' });
     }
-    engine.mode = 'playlist';
+    setMode('playlist');
     await setSource(1);
+    await sendTelnetCommand('output_url.start');
     const response = await sendTelnetCommand(`direct.push ${p}`);
     res.json({ success: true, response });
   });

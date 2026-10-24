@@ -30,7 +30,7 @@ export interface PlaylistItem {
 
 export interface PlayoutStatus {
   status: 'ONLINE' | 'STANDBY' | 'OBS_LIVE' | 'OFFLINE';
-  mode: 'playlist' | 'obs' | 'emergency_mire' | 'standby';
+  mode: 'playlist' | 'obs' | 'emergency_mire' | 'standby' | 'off';
   onAir: boolean;
   currentMedia: {
     title: string;
