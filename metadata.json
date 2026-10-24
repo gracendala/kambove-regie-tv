@@ -1,7 +1,0 @@
-{
-  "name": "Kambove TV - Régie Master",
-  "description": "Système professionnel et intuitif de gestion de régie de diffusion TV pour serveur Ubuntu, NAS et Liquidsoap.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
-

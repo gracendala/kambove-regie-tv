@@ -197,36 +197,9 @@ export default function App() {
     }
   };
 
-  // Quick insert
-  const handleQuickInsert = (type: 'jingle' | 'mire' | 'obs') => {
-    if (type === 'mire') {
-      handleControl('emergency_mire');
-      return;
-    }
-
-    if (type === 'jingle') {
-      const jingleItem: PlaylistItem = {
-        id: `pl-quick-${Date.now()}`,
-        mediaId: 'pub-01',
-        title: 'Spot Jingle - Kambove TV Ident Station (15s)',
-        path: '/mnt/regie_videos/pubs/jingle_kambove_tv_ident_15s.mp4',
-        category: 'pubs',
-        duration: 15,
-        durationFormatted: '00:15',
-        scheduledTime: '00:00:00',
-        calculatedStartTime: '00:00:00',
-        calculatedEndTime: '00:00:15',
-        type: 'jingle',
-        isFixedTime: false,
-        status: 'pending'
-      };
-
-      // Insert right after current item
-      const insertAt = Math.min(Math.max(currentIndex, -1) + 1, playlist.length);
-      const updated = [...playlist.slice(0, insertAt), jingleItem, ...playlist.slice(insertAt)];
-      const cascaded = cascadeRundownTimes(updated);
-      setPlaylist(cascaded);
-    }
+  // Écran d'attente rapide
+  const handleQuickInsert = (_type: 'mire') => {
+    handleControl('emergency_mire');
   };
 
   // Add items from NAS Explorer

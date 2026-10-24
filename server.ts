@@ -91,7 +91,8 @@ async function probeMissingDurations(paths: string[]) {
 // ─── Telnet Liquidsoap (une commande à la fois) ──────────────────────────────
 let telnetQueue: Promise<unknown> = Promise.resolve();
 
-function rawTelnet(command: string): Promise<string> {
+
+function rawTelnet(commands: string[]): Promise<string[]> {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     let output = '';
@@ -100,17 +101,23 @@ function rawTelnet(command: string): Promise<string> {
       if (done) return;
       done = true;
       socket.destroy();
-      const cleaned = output
-        .split('\n')
-        .map((l) => l.replace(/\r$/, ''))
-        .filter((l) => l.trim() !== 'END' && l.trim() !== 'Bye!')
-        .join('\n')
-        .trim();
-      resolve(cleaned);
+      // Chaque réponse Liquidsoap se termine par une ligne « END »
+      const answers: string[] = [];
+      let cur: string[] = [];
+      for (const raw of output.split('\n')) {
+        const l = raw.replace(/\r$/, '');
+        if (l.trim() === 'END') {
+          answers.push(cur.join('\n').trim());
+          cur = [];
+        } else if (l.trim() !== 'Bye!') {
+          cur.push(l);
+        }
+      }
+      resolve(commands.map((_, i) => answers[i] ?? ''));
     };
-    socket.setTimeout(1500);
+    socket.setTimeout(2000);
     socket.connect(TELNET_PORT, '127.0.0.1', () => {
-      socket.write(`${command}\nquit\n`);
+      socket.write(commands.join('\n') + '\nquit\n');
     });
     socket.on('data', (d) => { output += d.toString(); });
     socket.on('timeout', finish);
@@ -119,12 +126,17 @@ function rawTelnet(command: string): Promise<string> {
   });
 }
 
-function sendTelnetCommand(command: string): Promise<string> {
-  // Une seule ligne : empêche d'enchaîner des commandes cachées
-  const safe = String(command).replace(/[\r\n]+/g, ' ').trim();
+// File d'attente : une seule connexion telnet à la fois
+function telnetBatch(commands: string[]): Promise<string[]> {
+  // Une commande = une ligne : empêche d'enchaîner des commandes cachées
+  const safe = commands.map((c) => String(c).replace(/[\r\n]+/g, ' ').trim());
   const run = telnetQueue.then(() => rawTelnet(safe));
-  telnetQueue = run.catch(() => '');
+  telnetQueue = run.catch(() => []);
   return run;
+}
+
+async function sendTelnetCommand(command: string): Promise<string> {
+  return (await telnetBatch([command]))[0] ?? '';
 }
 
 function setSource(n: 0 | 1) {
@@ -135,23 +147,23 @@ function setAntenne(on: boolean) {
   return sendTelnetCommand(`var.set antenne = ${on}`);
 }
 
-async function getLiquidsoapCurrentTrack(): Promise<string | null> {
-  // Les vidéos n'ont pas de tags : output_url.metadata est vide.
-  // On demande le numéro du fichier à l'antenne, puis son chemin.
-  const onAir = await sendTelnetCommand('request.on_air');
+// Numéro de requête Liquidsoap -> chemin du fichier (évite de redemander à chaque fois)
+const ridPathCache = new Map<string, string>();
+
+async function pathFromOnAir(onAir: string): Promise<string | null> {
+  // Les vidéos n'ont pas de tags : on passe par request.on_air puis request.metadata
   const rids = onAir.split(/\s+/).filter((x) => /^\d+$/.test(x)).reverse();
   for (const rid of rids) {
+    if (ridPathCache.has(rid)) return ridPathCache.get(rid)!;
     const meta = await sendTelnetCommand(`request.metadata ${rid}`);
     const m = meta.match(/(?:^|\n)filename="([^"]+)"/) || meta.match(/initial_uri="([^"]+)"/);
-    if (m) return m[1];
+    if (m) {
+      if (ridPathCache.size > 200) ridPathCache.clear();
+      ridPathCache.set(rid, m[1]);
+      return m[1];
+    }
   }
   return null;
-}
-
-async function getLiquidsoapRemaining(): Promise<number | null> {
-  const r = await sendTelnetCommand('output_url.remaining');
-  const n = parseFloat(r);
-  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 // ─── Utilitaires ─────────────────────────────────────────────────────────────
@@ -301,6 +313,9 @@ const engine = {
   trackStartTime: Date.now()
 };
 
+// Dernier état calculé, partagé entre les navigateurs ouverts
+let statusCache: { at: number; body: any } | null = null;
+
 function statusLabel() {
   if (engine.mode === 'off') return 'OFFLINE';
   if (engine.mode === 'playlist') return 'ONLINE';
@@ -330,7 +345,15 @@ function tempCelsius() {
   }
 }
 
+let cachedPid: number | null = null;
 function liquidsoapPid(): number | null {
+  // Le PID ne change qu'au redémarrage : on ne reparcourt /proc que s'il a disparu
+  if (cachedPid && fs.existsSync(`/proc/${cachedPid}`)) return cachedPid;
+  cachedPid = findLiquidsoapPid();
+  return cachedPid;
+}
+
+function findLiquidsoapPid(): number | null {
   try {
     for (const pid of fs.readdirSync('/proc')) {
       if (!/^\d+$/.test(pid)) continue;
@@ -364,27 +387,36 @@ function nasStatus() {
 }
 
 async function getDiagnostics() {
-  const version = await sendTelnetCommand('version');
+  const [version, antenneSt, sourceSt, onAir, remainingSt] = await telnetBatch([
+    'version',
+    'var.get antenne',
+    'var.get regie_source',
+    'request.on_air',
+    'output_url.remaining'
+  ]);
   const telnetConnected = version.includes('Liquidsoap');
   const pid = liquidsoapPid();
 
   // Vérifie que Liquidsoap est bien dans l'état voulu par la régie
-  // (il repart en « playlist + sortie active » s'il a redémarré)
+  // (il repart en « playlist + antenne active » s'il a redémarré)
   let outputOn = false;
   if (telnetConnected) {
-    const st = (await sendTelnetCommand('var.get antenne')).trim().toLowerCase();
+    const st = antenneSt.trim().toLowerCase();
     outputOn = st.startsWith('true');
     const wantOn = engine.mode !== 'off';
     if (/^(true|false)/.test(st) && outputOn !== wantOn) {
       await setAntenne(wantOn);
       outputOn = wantOn;
     }
-    const src = parseInt((await sendTelnetCommand('var.get regie_source')).replace(/[^0-9-]/g, ''), 10);
+    const src = parseInt(sourceSt.replace(/[^0-9-]/g, ''), 10);
     const wantSrc = SOURCE_FOR_MODE[engine.mode];
     if (src !== wantSrc) await setSource(wantSrc);
   }
+  const remainingNum = parseFloat(remainingSt);
   return {
     outputOn,
+    activePath: telnetConnected ? await pathFromOnAir(onAir) : null,
+    remainingLs: Number.isFinite(remainingNum) && remainingNum >= 0 ? remainingNum : null,
     rtmpStatus: {
       connected: telnetConnected && outputOn,
       url: RTMP_OUT_URL,
@@ -499,11 +531,11 @@ async function startServer() {
   });
 
   app.get('/api/status', async (_req, res) => {
-    const diag = await getDiagnostics();
-    const list = engine.playlist || [];
+    const fresh = statusCache && Date.now() - statusCache.at < 1500;
+    if (fresh) return res.json(statusCache!.body);
 
-    const activePath = diag.serverStatus.telnetConnected ? await getLiquidsoapCurrentTrack() : null;
-    const remainingLs = diag.serverStatus.telnetConnected ? await getLiquidsoapRemaining() : null;
+    const { activePath, remainingLs, outputOn: _o, ...diag } = await getDiagnostics();
+    const list = engine.playlist || [];
 
     if (activePath && activePath !== engine.currentPath) {
       engine.currentPath = activePath;
@@ -532,11 +564,11 @@ async function startServer() {
     const nextIdx = foundIdx !== -1 ? (foundIdx + 1) % list.length : engine.currentIndex;
     const next = list.length > 0 && (foundIdx === -1 || list.length > 1) ? list[nextIdx] : null;
 
-    res.json({
+    const body = {
       ...diag,
       status: diag.serverStatus.telnetConnected ? statusLabel() : 'OFFLINE',
       mode: engine.mode,
-      onAir: diag.serverStatus.telnetConnected && diag.outputOn && engine.mode === 'playlist',
+      onAir: diag.serverStatus.telnetConnected && _o && engine.mode === 'playlist',
       currentMedia: current && engine.mode === 'playlist' ? {
         title: current.title || 'Média en cours',
         path: current.path || '',
@@ -556,11 +588,15 @@ async function startServer() {
         startTime: 'Enchaîné',
         durationFormatted: fmt(next.duration || 0)
       } : null
-    });
+    };
+    // Plusieurs navigateurs ouverts = une seule interrogation de Liquidsoap
+    statusCache = { at: Date.now(), body };
+    res.json(body);
   });
 
   app.post('/api/control', async (req, res) => {
     const { action } = req.body;
+    statusCache = null;
     if (action === 'start' || action === 'onair' || action === 'play') {
       setMode('playlist');
       await setSource(1);
@@ -594,6 +630,7 @@ async function startServer() {
     if (!p || !isInsideNas(p) || !fs.existsSync(p)) {
       return res.status(400).json({ success: false, error: 'Fichier introuvable sur le NAS' });
     }
+    statusCache = null;
     setMode('playlist');
     await setSource(1);
     await setAntenne(true);

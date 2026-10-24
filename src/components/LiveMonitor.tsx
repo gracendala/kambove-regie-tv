@@ -17,7 +17,7 @@ import { PlayoutStatus } from '../types';
 interface LiveMonitorProps {
   status: PlayoutStatus;
   onControl: (action: string) => void;
-  onQuickInsert: (type: 'jingle' | 'mire' | 'obs') => void;
+  onQuickInsert: (type: 'mire') => void;
   isActionLoading: boolean;
 }
 
@@ -147,13 +147,6 @@ export const LiveMonitor: React.FC<LiveMonitorProps> = ({
         <div className="bg-slate-900 px-4 py-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-slate-400 text-[11px]">Actions rapides :</span>
           <div className="flex items-center gap-2">
-            <button
-              id="btn-quick-jingle"
-              onClick={() => onQuickInsert('jingle')}
-              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition text-xs"
-            >
-              + Jingle Station (15s)
-            </button>
             <button
               id="btn-quick-mire"
               onClick={() => onQuickInsert('mire')}

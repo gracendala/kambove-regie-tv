@@ -7,7 +7,6 @@ import { Upload, Play,
   Save,
   Plus,
   Copy,
-  FolderOpen,
   AlertCircle,
   CheckCircle2,
   FileDown,
@@ -15,9 +14,8 @@ import { Upload, Play,
   Lock,
   Unlock,
   Radio } from 'lucide-react';
-import { PlaylistItem, RundownTemplate } from '../types';
+import { PlaylistItem } from '../types';
 import { cascadeRundownTimes, formatDuration, timeStringToSeconds } from '../utils/timeFormat';
-import { SCHEDULE_TEMPLATES } from '../data/templates';
 
 interface ScheduleGridProps {
   playlist: PlaylistItem[];
@@ -44,8 +42,6 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
     document.getElementById(`grille-ligne-${currentIndex}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [currentIndex]);
 
-  const [showTemplatesModal, setShowTemplatesModal] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<RundownTemplate | null>(null);
 
   // Total duration
   const totalSeconds = playlist.reduce((acc, item) => acc + (item.duration || 0), 0);
@@ -109,16 +105,6 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
       isFixedTime: true
     };
     onUpdatePlaylist(cascadeRundownTimes(updated));
-  };
-
-  // Load template
-  const handleLoadTemplate = (tpl: RundownTemplate) => {
-    const newItems: PlaylistItem[] = tpl.items.map((item, idx) => ({
-      ...item,
-      id: `pl-tpl-${Date.now()}-${idx}`
-    }));
-    onUpdatePlaylist(cascadeRundownTimes(newItems));
-    setShowTemplatesModal(false);
   };
 
   // Clear playlist
@@ -211,15 +197,6 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
               }}
             />
           </label>
-
-          <button
-            id="btn-open-templates"
-            onClick={() => setShowTemplatesModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
-          >
-            <FolderOpen className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Modèles de Grille</span>
-          </button>
 
           <button
             id="btn-add-nas-media"
@@ -433,69 +410,6 @@ export const ScheduleGrid: React.FC<ScheduleGridProps> = ({
         </span>
       </div>
 
-      {/* Templates Modal */}
-      {showTemplatesModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-xl w-full p-5 shadow-2xl">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
-              <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <FolderOpen className="w-4 h-4 text-indigo-400" />
-                Modèles de Programmation Kambove TV
-              </h4>
-              <button
-                onClick={() => setShowTemplatesModal(false)}
-                className="text-slate-400 hover:text-white text-lg font-bold"
-              >
-                &times;
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-300 mb-4">
-              Sélectionnez une grille pré-configurée pour remplir immédiatement la journée de diffusion :
-            </p>
-
-            <div className="space-y-3">
-              {SCHEDULE_TEMPLATES.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  className="p-3 rounded-lg border border-slate-800 bg-slate-950 hover:border-indigo-500/50 hover:bg-slate-900 transition flex flex-col justify-between cursor-pointer"
-                  onClick={() => handleLoadTemplate(tpl)}
-                >
-                  <div className="flex items-center justify-between">
-                    <h5 className="text-xs font-bold text-indigo-300">{tpl.name}</h5>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                      {tpl.itemsCount} émissions &bull; {tpl.totalDuration}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    {tpl.description}
-                  </p>
-                  <div className="mt-2 pt-2 border-t border-slate-800/80 flex justify-end">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleLoadTemplate(tpl);
-                      }}
-                      className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold"
-                    >
-                      Appliquer ce modèle
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-5 pt-3 border-t border-slate-800 flex justify-end">
-              <button
-                onClick={() => setShowTemplatesModal(false)}
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

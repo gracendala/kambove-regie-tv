@@ -4,6 +4,10 @@ settings.server.telnet.set(true)
 settings.server.telnet.port.set(1234)
 settings.server.telnet.bind_addr.set("127.0.0.1")
 
+# Journaux : avertissements et erreurs seulement (niveau 2)
+# Le niveau 3 notait chaque connexion de la régie et remplissait le disque
+settings.log.level.set(2)
+
 # Format vidéo broadcast : 720p @ 25fps
 settings.frame.video.width.set(1280)
 settings.frame.video.height.set(720)
