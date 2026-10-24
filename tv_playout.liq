@@ -12,7 +12,7 @@ settings.frame.video.framerate.set(25)
 # Variable interactive de sélection de source (0 = Standby / Attente, 1 = Playlist NAS, 2 = Direct OBS)
 active_source = interactive.int("regie_source", 1)
 
-# 1. Écran d'attente / Standby
+# 1. Écran d attente / Standby
 attente = blank()
 
 # 2. Playlist NAS (avec sécurité si liste vide ou média manquant)
